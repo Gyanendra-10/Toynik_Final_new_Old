@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Toynik - Welcome</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      font-family: sans-serif;
+      background-color: #00000000;
+    }
+
+    /* Background image always fills screen (no cropping cutoffs) */
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-image: url("images/background.png");
+      background-repeat: no-repeat;
+      background-position: center center;
+      background-size: 100% 100%; /* stretches to fill entire viewport */
+      z-index: -1;
+    }
+
+    /* Start Button styling */
+    .start-btn {
+      position: absolute;
+      bottom: 30px; /* distance from bottom */
+      left: 50%;
+      transform: translateX(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.2s ease, filter 0.2s ease;
+    }
+
+    /* ✅ Change this value to resize the button */
+    .start-btn img {
+      width: 400px;   /* adjust this number for button size */
+      height: auto;
+      display: block;
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,0.4));
+      transition: transform 0.2s ease, filter 0.2s ease;
+    }
+
+    .start-btn:hover img {
+      transform: scale(1.06);
+      filter: drop-shadow(0 6px 14px rgba(0,0,0,0.6));
+    }
+
+    .start-btn:active img {
+      transform: scale(0.97);
+      filter: drop-shadow(0 3px 6px rgba(0,0,0,0.4));
+    }
+
+    /* Toynik logo bottom-left */
+    .toynik {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      width: 100px; /* adjust this number for logo size */
+      height: auto;
+      opacity: 0.9;
+      cursor: pointer;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+    }
+
+    .toynik:hover {
+      transform: scale(1.05);
+      opacity: 1;
+    }
+
+    @media (max-width: 480px) {
+      .start-btn img {
+        width: 120px; /* smaller on phones */
+      }
+      .toynik {
+        width: 80px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Start Button -->
+  <button class="start-btn" onclick="location.href='pages/categories.html'">
+    <img src="images/start.png" alt="Start" />
+  </button>
+
+  <!-- Toynik Logo -->
+  <a href="https://www.toynik.com/" target="_blank" rel="noopener noreferrer">
+    <img class="toynik" src="images/toynik.png" alt="Toynik Logo" />
+  </a>
+</body>
+</html>

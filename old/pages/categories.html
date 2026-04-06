@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="utf-8" />
+  <title>Categories</title>
+
+  <!--
+    Notes:
+    - Background: object-fit: fill -> forces image to fill viewport (no cropping).
+      If you prefer to keep aspect ratio, use 'cover' or 'contain' instead.
+    - Grid positioning: JS computes a top offset (gridTopVh) so the entire grid fits
+      into the viewport with a bottom margin. Change DEFAULT_GRID_TOP_VH and BOTTOM_MARGIN_PX.
+    - Tile aspect ratio: change TILE_ASPECT_PERCENT to make tiles taller/shorter.
+    - Tile images: object-fit: fill -> will stretch images to fully fill tiles.
+  -->
+
+  <style>
+    :root{
+      /* Default starting position for the grid (in vh). JS will adjust it to ensure fit */
+      --grid-top-vh: 35;
+
+      /* Default tile aspect ratio (height = TILE_ASPECT_PERCENT% of width) */
+      --tile-aspect-percent: 62;
+
+      /* Spacing between tiles */
+      --tile-gap: 14px;
+
+      /* Max width of content on larger screens */
+      --max-width: 560px;
+
+      /* Bottom safe margin in px (JS uses to ensure grid doesn't touch bottom) */
+      --bottom-margin-px: 28px;
+    }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: #000;
+    }
+
+    .page {
+      position: relative;
+      min-height: 100vh;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    /* Full-bleed background image */
+    .bg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      /* Fills entire viewport. Changes image aspect ratio to fit exactly.
+         If you want to preserve ratio use 'cover' (may crop) or 'contain' (may letterbox). */
+      object-fit: fill;
+      object-position: top center; /* keep top artwork visible */
+      z-index: 0;
+      pointer-events: none;
+      -webkit-user-drag: none;
+    }
+
+    /* Top bar with back (over background) */
+    .topbar {
+      position: relative;
+      z-index: 3;
+      width: 100%;
+      padding: 12px 14px 0 14px;
+      box-sizing: border-box;
+      display: flex;
+      justify-content: flex-start;
+    }
+    .back-btn {
+      background: rgba(255, 255, 255, 0.432);
+      border: none;
+      padding: 8px;
+      border-radius: 8px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+    }
+    .back-btn img { width: 40px; height: 40px; display:block; }
+
+    .grid-wrap {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      max-width: var(--max-width);
+      margin: 0 auto;
+      box-sizing: border-box;
+      padding: 0 14px 34px 14px;
+    }
+
+    /* Grid container: JS will set inline style margin-top using --grid-top-vh */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--tile-gap);
+      width: 100%;
+      box-sizing: border-box;
+      align-items: stretch;
+      justify-items: center;
+    }
+
+    /* Tile — aspect controlled by CSS variable */
+    .tile {
+      width: 100%;
+      height: 0;
+      padding-bottom: calc(var(--tile-aspect-percent) * 1%); /* height = % of width */
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.212);
+      background: transparent;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform .12s ease, box-shadow .12s ease;
+      display: block;
+    }
+    .tile:active { transform: translateY(2px) scale(.997); }
+    .tile:hover { transform: translateY(-4px); box-shadow: 0 12px 34px rgba(3,12,28,0.18); }
+
+    /* Tile image: fill the tile fully; will stretch/squash as requested */
+    .tile img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: fill;  /* <-- fill image even if it deforms */
+      display: block;
+    }
+
+    /* smaller phones - make tiles taller to be comfortably tappable */
+    @media (max-width:420px) {
+      :root { --tile-aspect-percent: 70; --tile-gap: 10px; }
+      .grid { padding: 0 6px; }
+    }
+
+    /* landscape / wide screens - adjust tile shape */
+    @media (orientation: landscape) and (max-height: 420px) {
+      :root { --tile-aspect-percent: 50; }
+      .tile { border-radius: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <!-- background -->
+    <img class="bg" src="../images/mainpage.png" alt="Background" />
+
+    <!-- top bar -->
+    <div class="topbar">
+      <button class="back-btn" id="backBtn" aria-label="Back to home">
+        <img src="../images/backicon.png" alt="Back" onerror="this.style.display='none'"/>
+      </button>
+    </div>
+
+    <!-- grid area -->
+    <div class="grid-wrap">
+      <!-- IMPORTANT: JS will set the inline style "margin-top" for #grid so it fits the viewport -->
+      <div id="grid" class="grid" style="margin-top: calc(var(--grid-top-vh) * 1vh);">
+        <div class="tile" id="btn-domestic"><img src="../images/domesticanimals.png" alt="Domestic" /></div>
+        <div class="tile" id="btn-wild"><img src="../images/wildanimals.png" alt="Wild" /></div>
+        <div class="tile" id="btn-birds"><img src="../images/birds.png" alt="Birds" /></div>
+        <div class="tile" id="btn-abc"><img src="../images/abc.png" alt="ABC" /></div>
+        <div class="tile" id="btn-123"><img src="../images/123.png" alt="123" /></div>
+        <div class="tile" id="btn-hindi"><img src="../images/hindi.png" alt="Hindi" /></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* -------------------------
+       CONFIG (change these values)
+       -------------------------
+       DEFAULT_GRID_TOP_VH: starting grid top in vh units. JS will adjust this downward
+         if the grid would overflow the viewport. Set this to where you want the grid
+         to start visually (e.g., 35).
+       MIN_GRID_TOP_VH: the grid won't be pushed higher than this (keeps grid from overlapping artwork).
+       BOTTOM_MARGIN_PX: safety margin between grid bottom and viewport bottom.
+       TILE_ASPECT_PERCENT: default CSS tile aspect (kept in sync with CSS var).
+    */
+    const DEFAULT_GRID_TOP_VH = 35;
+    const MIN_GRID_TOP_VH = 18;
+    const BOTTOM_MARGIN_PX = 28;
+    const TILE_ASPECT_PERCENT = 62; // sync with CSS variable --tile-aspect-percent
+
+    // mapping to pages (adjust filenames if needed)
+    const mapping = {
+      'btn-domestic': 'domesticanimals.html',
+      'btn-wild': 'wildanimals.html',
+      'btn-birds': 'birds.html',
+      'btn-abc': 'abc.html',
+      'btn-123': 'numbers.html',
+      'btn-hindi': 'hindi.html'
+    };
+
+    // wire up tile navigation
+    Object.keys(mapping).forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('click', () => window.location.href = mapping[id]);
+      el.addEventListener('touchstart', () => el.classList.add('pressed'), {passive:true});
+      el.addEventListener('touchend', () => el.classList.remove('pressed'), {passive:true});
+    });
+
+    // back button
+    document.getElementById('backBtn').addEventListener('click', () => {
+      window.location.href = '../../index.html';
+    });
+
+    /* -------------------------
+       layout helper: ensure grid fits
+       -------------------------
+       This measures:
+         - viewport height (vh)
+         - grid height (computed from width and tile aspect)
+       and adjusts 'gridTopVh' (in vh) so grid bottom + BOTTOM_MARGIN_PX <= viewport height.
+       It also enforces MIN_GRID_TOP_VH so the grid doesn't move *over* the page artwork.
+    */
+    function updateGridFit() {
+      // write CSS TILE_ASPECT_PERCENT so CSS and JS stay in sync
+      document.documentElement.style.setProperty('--tile-aspect-percent', TILE_ASPECT_PERCENT);
+
+      const grid = document.getElementById('grid');
+      const vw = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
+      const vh = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
+
+      // compute grid width (grid-wrap width minus paddings). This matches CSS max-width behavior.
+      const maxWidth = Math.min(vw - 28 /* page padding */, parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--max-width')) || vw);
+      const gridWidth = Math.min(vw - 28, maxWidth);
+
+      // each tile width is roughly (gridWidth - gap)/2
+      const gap = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tile-gap')) || 14;
+      const tileWidth = (gridWidth - gap) / 2;
+
+      // number of rows (we have 6 tiles, 2 columns -> 3 rows)
+      const rows = Math.ceil(6 / 2);
+
+      // tile height = tileWidth * aspectPercent/100
+      const tileHeight = tileWidth * (TILE_ASPECT_PERCENT / 100);
+
+      // total grid height = rows * tileHeight + (rows - 1) * gap
+      const totalGridHeight = (rows * tileHeight) + ((rows - 1) * gap);
+
+      // Now compute desired top offset so grid bottom + margin fits within viewport.
+      // desiredTopPx = vh - bottomMargin - totalGridHeight
+      const desiredTopPx = Math.max( (vh - BOTTOM_MARGIN_PX - totalGridHeight), (MIN_GRID_TOP_VH / 100) * vh );
+
+      // convert desiredTopPx to vh units (for CSS: margin-top: calc(var(--grid-top-vh) * 1vh))
+      let gridTopVh = (desiredTopPx / vh) * 100;
+
+      // clamp so gridTopVh not greater than DEFAULT_GRID_TOP_VH (we don't want it suddenly jump down)
+      gridTopVh = Math.min(gridTopVh, DEFAULT_GRID_TOP_VH);
+
+      // but also keep it at least MIN_GRID_TOP_VH
+      gridTopVh = Math.max(gridTopVh, MIN_GRID_TOP_VH);
+
+      // set CSS variable used by inline style (the inline style on #grid reads var(--grid-top-vh))
+      document.documentElement.style.setProperty('--grid-top-vh', gridTopVh);
+
+      // update inline style for #grid margin-top (keeps same as CSS var)
+      grid.style.marginTop = `calc(${gridTopVh} * 1vh)`;
+    }
+
+    // initial layout and on change
+    updateGridFit();
+    window.addEventListener('resize', updateGridFit);
+    window.addEventListener('orientationchange', () => {
+      // slight delay on orientation change to allow new sizes to settle
+      setTimeout(updateGridFit, 120);
+    });
+  </script>
+</body>
+</html>

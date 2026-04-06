@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AR Animal Menu</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom scrollbar for a cleaner look (optional) */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            /* Change this to adjust the scrollbar track color */
+            background: #f1f5f9; /* gray-100 */
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            /* Change this to adjust the scrollbar handle color */
+            background: #a5b4fc; /* indigo-300 */
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            /* Change this to adjust the scrollbar handle hover color */
+            background: #818cf8; /* indigo-400 */
+        }
+        /* Using Inter font */
+        body {
+            font-family: 'Inter', sans-serif;
+            /* --- BACKGROUND IMAGE STYLES --- */
+            /* Using the local image from the 'images' folder */
+            background-image: url('../images/commonbg.png');
+            /* This will stretch the image to fill the screen */
+            background-size: 100% 100%; 
+            background-position: center; /* This centers the image */
+            background-repeat: no-repeat; /* This prevents the image from repeating */
+            background-attachment: fixed; /* This keeps the background in place even if content scrolls */
+        }
+    </style>
+</head>
+<body class="flex justify-center items-center min-h-screen">
+
+    <!-- Back Button -->
+    <a href="categories.html" class="fixed top-6 left-6 z-10 bg-white800/80 backdrop-blur-md text-gray-800 font-semibold py-2 px-4 rounded-xl shadow-md transform transition-all duration-200 ease-in-out hover:bg-indigo-500 hover:text-white active:scale-95">
+        Back
+    </a>
+
+    <!-- Menu Card -->
+    <!-- You can change the menu color by editing 'bg-white/80'. For example, 'bg-gray-800/80' for a dark, semi-transparent menu. -->
+    <div class="bg-white800/80 backdrop-blur-md w-full max-w-xs sm:max-w-sm rounded-2xl shadow-lg p-6">
+        <h1 class="text-2xl font-bold text-center text-gray-800 mb-6">Select an Animal</h1>
+
+        <!-- Scrollable Menu List -->
+        <!-- max-h-96 prevents the menu from stretching too far on tall screens. -->
+        <div id="menu-container" class="max-h-96 overflow-y-auto custom-scrollbar pr-2">
+            <ul class="space-y-3">
+                <!-- Menu items will be generated here by JavaScript -->
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Array of animals
+        const animals = [
+            "Lion", "Chimpanzee", "Bear", "Leopard", "Fox", 
+            "Deer", "Tiger", "Elephant", "Yak"
+        ];
+
+        // Sort the animals array alphabetically
+        animals.sort();
+
+        // Get the list container
+        const menuList = document.querySelector('#menu-container ul');
+
+        // Function to create and add menu items
+        function createMenuItems() {
+            animals.forEach(animal => {
+                // Create list item
+                const li = document.createElement('li');
+
+                // Create anchor tag
+                const a = document.createElement('a');
+                a.textContent = animal;
+                // Create the href link, e.g., "lion.html"
+                a.href = `wildanimals/${animal.toLowerCase()}.html`;
+                
+                // --- BUTTON COLOR ---
+                // Change 'bg-indigo-500' to change the button color and 'hover:bg-indigo-600' for the hover effect.
+                // For example, use 'bg-green-500' and 'hover:bg-green-600' for green buttons.
+                a.className = "block w-full text-center py-4 px-5 bg-indigo-500 text-white font-semibold rounded-xl shadow-md transform transition-all duration-200 ease-in-out hover:bg-indigo-600 hover:shadow-lg active:scale-95";
+                
+                // Append the link to the list item, and the list item to the list
+                li.appendChild(a);
+                menuList.appendChild(li);
+            });
+        }
+
+        // Run the function to build the menu when the page loads
+        createMenuItems();
+    </script>
+
+</body>
+</html>
+
