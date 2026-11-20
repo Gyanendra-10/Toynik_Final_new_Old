@@ -2,78 +2,241 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>Choose Board</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#cfe3d6">
+<title>Choose Board - Toynik AR</title>
 
 <style>
-body, html {
+:root {
+  /* Where the scroll window sits; recalculated in JS from the background image */
+  --list-top: 22vh;
+  --list-bottom: 18vh;
+  --glow: rgba(255, 214, 64, 0.9);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
   margin: 0;
-  padding: 0;
   width: 100%;
   height: 100%;
   overflow: hidden;
+  background: #9dbf8a;
+  font-family: "Arial Rounded MT Bold", Arial, sans-serif;
 }
 
-/* Background */
-body {
-  background: url('mainbg.png') no-repeat center center;
-  background-size: contain;
-  background-color: black
+/* Background always fills the whole screen (cropped, never letterboxed) */
+.bg {
+  position: fixed;
+  inset: 0;
+  background: url('mainbg.png') no-repeat center center / cover;
+  z-index: 0;
 }
 
-/* Layout */
-.container {
-  height: 90%;
+/* Scrollable window between the "Choose your board" sign and the info box */
+.list {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: var(--list-top);
+  bottom: var(--list-bottom);
+  z-index: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: y proximity;
+  scrollbar-width: none;
+  /* soft fade at the top and bottom edges while scrolling */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 22px), transparent 100%);
+          mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 22px), transparent 100%);
+}
+.list::-webkit-scrollbar { display: none; }
+
+.stack {
   display: flex;
   flex-direction: column;
   align-items: center;
-
-  /* push content down like your design */
-  padding-top: 30vh;
-
-  gap: 4vh;
+  gap: 22px;
+  padding: 18px 16px 34px;
 }
 
-/* Buttons */
-.board-btn {
-  width: 90vw;         /* smaller + responsive */
-  max-width: 180px;   /* prevent too large */
+/* Board cards */
+.board {
+  position: relative;
+  width: min(92vw, 460px);
+  padding: 0;
+  border: none;
+  background: none;
   cursor: pointer;
-  transition: transform 0.2s ease;
+  scroll-snap-align: center;
+  opacity: 0;
+  transform: translateY(40px) scale(0.92);
+  animation: enter 0.7s cubic-bezier(.2, .9, .3, 1.3) forwards;
+  transition: transform 0.18s ease;
+}
+.board img {
+  display: block;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.35));
+}
+.board:active { transform: scale(0.95); }
+.board:focus-visible { outline: 3px solid #fff; outline-offset: 4px; border-radius: 12px; }
+
+/* New board: comes first, floats, glows and gets a light shine */
+.board.new { animation: enter 0.7s cubic-bezier(.2, .9, .3, 1.3) 0.1s forwards, float 3.2s ease-in-out 0.9s infinite; }
+.board.new img { animation: glow 2.2s ease-in-out 0.9s infinite; }
+.board.new .shine {
+  position: absolute;
+  inset: 4% 6% 22%;
+  border-radius: 18px;
+  overflow: hidden;
+  pointer-events: none;
+}
+.board.new .shine::after {
+  content: "";
+  position: absolute;
+  top: -20%;
+  left: -60%;
+  width: 40%;
+  height: 140%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  transform: skewX(-18deg);
+  animation: shine 3.6s ease-in-out 1.2s infinite;
+}
+.badge {
+  position: absolute;
+  top: -6px;
+  right: 2%;
+  padding: 7px 14px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, #ff5a5f, #e0262c);
+  color: #fff;
+  font-size: 15px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  border: 2px solid #fff;
+  animation: pop 1.6s ease-in-out 1s infinite;
+  pointer-events: none;
 }
 
-.board-btn:active {
-  transform: scale(0.95);
-}
+.board.old { animation-delay: 0.3s; }
 
-/* Optional: fine-tune spacing on small screens */
-@media (max-height: 700px) {
-  .container {
-    padding-top: 20vh;
-    gap: 3vh;
-  }
+/* "Scroll for Version 1" hint */
+.hint {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--list-bottom) + 6px);
+  z-index: 2;
+  transform: translateX(-50%);
+  padding: 7px 14px;
+  border-radius: 18px;
+  background: rgba(60, 35, 10, 0.75);
+  color: #fff;
+  font-size: 13px;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: bob 1.4s ease-in-out infinite;
+  transition: opacity 0.3s;
+}
+.hint.hidden { opacity: 0; }
+
+/* Tap: the chosen board zooms toward you, then the page opens */
+.board.chosen { animation: none; opacity: 1; transform: scale(1.12); transition: transform 0.35s ease, opacity 0.35s ease; opacity: 0; }
+.list.leaving .board:not(.chosen) { opacity: 0.2; transition: opacity 0.3s; }
+
+@keyframes enter { to { opacity: 1; transform: none; } }
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes glow {
+  0%, 100% { filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.35)) drop-shadow(0 0 0 transparent); }
+  50%      { filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.35)) drop-shadow(0 0 14px var(--glow)); }
+}
+@keyframes shine { 0% { left: -60%; } 45%, 100% { left: 130%; } }
+@keyframes pop { 0%, 100% { transform: scale(1) rotate(6deg); } 50% { transform: scale(1.12) rotate(6deg); } }
+@keyframes bob { 0%, 100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, 5px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .board, .board.new, .board.new img, .badge, .hint, .board.new .shine::after { animation: none !important; opacity: 1; transform: none; }
 }
 </style>
 </head>
 
 <body>
 
-<div class="container">
+<div class="bg" aria-hidden="true"></div>
 
-  <img src="oldboard.png" class="board-btn" onclick="goOld()">
-  <img src="newboard.png" class="board-btn" onclick="goNew()">
+<main class="list" id="list">
+  <div class="stack">
+    <button class="board new" type="button" data-href="new/index.html" aria-label="Version 2 (new board)">
+      <img src="newboard.png" alt="Version 2 (new board)">
+      <span class="shine"></span>
+      <span class="badge">NEW ✨</span>
+    </button>
 
-</div>
+    <button class="board old" type="button" data-href="old/index.html" aria-label="Version 1 (older board)">
+      <img src="oldboard.png" alt="Version 1 (older board)">
+    </button>
+  </div>
+</main>
+
+<div class="hint" id="hint">▼ Scroll for Version 1</div>
 
 <script>
-function goOld() {
-  window.location.href = "old/index.html";
-}
+(function () {
+  // Background image layout (mainbg.png is 393 x 852):
+  // the "Choose your board" sign ends at y ~ 182, the info box starts at y ~ 706.
+  var IMG_W = 393, IMG_H = 852, SIGN_BOTTOM = 182, INFO_TOP = 706;
+  var root = document.documentElement;
+  var list = document.getElementById('list');
+  var hint = document.getElementById('hint');
 
-function goNew() {
-  window.location.href = "new/index.html";
-}
+  function layout() {
+    var w = window.innerWidth, h = window.innerHeight;
+    var s = Math.max(w / IMG_W, h / IMG_H);           // background-size: cover
+    var offY = (h - IMG_H * s) / 2;                   // background-position: center
+    var top = Math.max(0, offY + SIGN_BOTTOM * s);
+    var bottom = Math.max(0, h - (offY + INFO_TOP * s));
+    // keep a usable window on very short screens
+    if (h - top - bottom < h * 0.45) { bottom = Math.max(0, h * 0.55 - top); }
+    root.style.setProperty('--list-top', top + 'px');
+    root.style.setProperty('--list-bottom', bottom + 'px');
+    updateHint();
+  }
+
+  function updateHint() {
+    var canScroll = list.scrollHeight - list.clientHeight > 8;
+    var nearEnd = list.scrollTop + list.clientHeight >= list.scrollHeight - 40;
+    hint.classList.toggle('hidden', !canScroll || nearEnd);
+  }
+
+  window.addEventListener('resize', layout);
+  window.addEventListener('orientationchange', layout);
+  list.addEventListener('scroll', updateHint, { passive: true });
+  layout();
+
+  var leaving = false;
+  document.querySelectorAll('.board').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      if (leaving) return;
+      leaving = true;
+      btn.classList.add('chosen');
+      list.classList.add('leaving');
+      setTimeout(function () { window.location.href = btn.getAttribute('data-href'); }, 320);
+    });
+  });
+
+  // Coming back with the browser Back button: undo the exit animation
+  window.addEventListener('pageshow', function (e) {
+    if (!e.persisted) return;
+    leaving = false;
+    list.classList.remove('leaving');
+    document.querySelectorAll('.board.chosen').forEach(function (b) { b.classList.remove('chosen'); });
+  });
+})();
 </script>
 
 </body>
