@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Letter U - Toynik AR</title>
 
   <!-- A-Frame + MindAR -->
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
@@ -34,13 +35,50 @@
     .ar-button:active { transform: scale(0.9); filter: brightness(1.2); }
     .ar-button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; filter: none; }
     .back-button { position: absolute; top: 20px; left: 20px; z-index: 10; }
+  
+    /* ---- toynik-ar-fix: tap-to-start screen + scan hint ---- */
+    .back-button { z-index: 300; top: calc(20px + env(safe-area-inset-top)); }
+    #startOverlay {
+      position: fixed; inset: 0; z-index: 200;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 16px; padding: 24px; box-sizing: border-box;
+      background: #000; color: #fff; text-align: center;
+      font-family: Arial, sans-serif;
+    }
+    #startTitle { font-size: 26px; font-weight: bold; }
+    #startBtn {
+      padding: 16px 36px; border: none; border-radius: 30px;
+      background: #ffcc00; color: #000; font-size: 18px; font-weight: bold;
+      cursor: pointer; -webkit-tap-highlight-color: transparent;
+    }
+    #startBtn:disabled { opacity: 0.6; }
+    #startMsg { font-size: 14px; opacity: 0.85; max-width: 320px; line-height: 1.4; }
+    #scanLabel {
+      position: fixed; z-index: 100; left: 50%; transform: translateX(-50%);
+      bottom: calc(40px + env(safe-area-inset-bottom));
+      max-width: calc(100vw - 32px); box-sizing: border-box;
+      padding: 12px 22px; border-radius: 24px;
+      background: rgba(0, 0, 0, 0.75); color: #fff;
+      font: bold 18px Arial, sans-serif; text-align: center;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      pointer-events: none; display: none;
+    }
   </style>
 </head>
 <body>
+  <!-- toynik-ar-fix v1 -->
+  <!-- toynik-ar-fix: iOS needs the camera to start from a tap -->
+  <div id="startOverlay">
+    <div id="startTitle">Scan the Letter U</div>
+    <button id="startBtn" type="button" disabled>Loading...</button>
+    <div id="startMsg">Tap Start, then point your camera at the Letter U card</div>
+  </div>
+  <div id="scanLabel" role="status" aria-live="polite">Scan the Letter U</div>
+
   <!-- pages/abc/u.html -->
   <a-scene
     id="ar-scene"
-    mindar-image="imageTargetSrc: ../../mind/abc/u.mind; autoStart: true;"
+    mindar-image="imageTargetSrc: ../../mind/abc/u.mind; autoStart: false; uiScanning: no; filterMinCF: -1; filterBeta: -1; warmupTolerance: 5; missTolerance: 10;"
     color-space="sRGB"
     renderer="colorManagement: true, physicallyCorrectLights"
     vr-mode-ui="enabled: false"
@@ -53,8 +91,11 @@
 
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-    <a-entity id="target-entity" mindar-image-target="targetIndex: 0">
-      <a-gltf-model id="animated-model" src="#model" position="0 0 0" rotation="0 0 0" scale="0.5 0.5 0.5"></a-gltf-model>
+    <a-entity id="target-entity" mindar-image-target="targetIndex: 0"></a-entity>
+
+    <!-- toynik-ar-fix: the model follows the card through this container (smooths jitter) -->
+    <a-entity id="smooth-container" visible="false">
+      <a-gltf-model id="animated-model" src="#model" position="0 0 0" rotation="0 0 0" scale="1 1 1"></a-gltf-model>
     </a-entity>
   </a-scene>
 
@@ -118,6 +159,187 @@
         sound.currentTime = 0;
         sound.play();
       });
+    });
+  </script>
+  <!-- toynik-ar-fix: camera start, scan hint, smoothing -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const sceneEl = document.querySelector('a-scene');
+      const target = document.querySelector('#target-entity');
+      const follower = document.querySelector('#smooth-container');
+      const overlay = document.querySelector('#startOverlay');
+      const startBtn = document.querySelector('#startBtn');
+      const startMsg = document.querySelector('#startMsg');
+      const scanLabel = document.querySelector('#scanLabel');
+
+      let arStarted = false;
+      let targetVisible = false;
+      let snap = true;   // first frame after the card is found: jump, don't glide
+
+      // ---------- camera start (from a tap, for iOS) ----------
+      function explain(err) {
+        const name = (err && err.name) || '';
+        if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          return 'The camera needs a secure https:// link. If you opened this inside WhatsApp or Instagram, open it in Safari or Chrome instead.';
+        }
+        if (name === 'NotAllowedError' || name === 'SecurityError') {
+          return 'Camera permission was blocked. Allow the camera for this site (iPhone: Settings > Safari > Camera), then tap Try Again.';
+        }
+        if (name === 'NotReadableError' || name === 'AbortError') {
+          return 'The camera is busy in another app. Close it and tap Try Again.';
+        }
+        if (name === 'NotFoundError' || name === 'OverconstrainedError') {
+          return 'No camera was found on this device.';
+        }
+        return 'Could not start the camera' + (err && err.message ? ': ' + err.message : '.') + ' Tap Try Again.';
+      }
+
+      function fail(err) {
+        console.error('AR start failed:', err);
+        startBtn.disabled = false;
+        startBtn.innerText = 'Try Again';
+        startMsg.innerText = explain(err);
+      }
+
+      // MindAR creates the camera <video>; make sure iOS plays it inline and muted
+      function fixCameraVideo() {
+        document.querySelectorAll('video').forEach((v) => {
+          v.muted = true;
+          v.playsInline = true;
+          v.setAttribute('muted', '');
+          v.setAttribute('playsinline', '');
+          v.setAttribute('webkit-playsinline', '');
+          if (v.paused) v.play().catch(() => {});
+        });
+      }
+
+      // Unlock the page's sound on iOS while we have a tap
+      function unlockAudio() {
+        document.querySelectorAll('audio').forEach((a) => {
+          const wasMuted = a.muted;
+          a.muted = true;
+          const p = a.play();
+          const reset = () => { a.pause(); a.currentTime = 0; a.muted = wasMuted; };
+          if (p && p.then) p.then(reset, reset); else reset();
+        });
+      }
+
+      async function startAR() {
+        startBtn.disabled = true;
+        startBtn.innerText = 'Starting...';
+        startMsg.innerText = 'Allow camera access when asked';
+        unlockAudio();
+
+        if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          fail(null);
+          return;
+        }
+        try {
+          // Ask for the camera inside the tap so iOS shows the prompt and gives a clear error
+          const probe = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: 'environment' } });
+          probe.getTracks().forEach((t) => t.stop());
+        } catch (err) {
+          fail(err);
+          return;
+        }
+
+        const onReady = () => {
+          sceneEl.removeEventListener('arError', onError);
+          arStarted = true;
+          fixCameraVideo();
+          overlay.remove();
+          if (!targetVisible) scanLabel.style.display = 'block';
+        };
+        const onError = () => {
+          sceneEl.removeEventListener('arReady', onReady);
+          const v = document.querySelector('video');
+          if (v && !v.srcObject) v.remove();
+          fail({ name: 'NotReadableError' });
+        };
+        sceneEl.addEventListener('arReady', onReady, { once: true });
+        sceneEl.addEventListener('arError', onError, { once: true });
+
+        sceneEl.systems['mindar-image-system'].start();
+        const video = document.querySelector('video');
+        if (video) {
+          fixCameraVideo();
+          video.addEventListener('loadedmetadata', fixCameraVideo);
+        }
+      }
+
+      startBtn.addEventListener('click', startAR);
+      const enableStart = () => { startBtn.disabled = false; startBtn.innerText = 'Start'; };
+      if (sceneEl.hasLoaded) enableStart(); else sceneEl.addEventListener('loaded', enableStart);
+
+      // Release the camera when leaving the page so the next page can use it
+      window.addEventListener('pagehide', () => {
+        if (!arStarted) return;
+        try { sceneEl.systems['mindar-image-system'].stop(); } catch (e) {}
+      });
+      // Coming back via the browser Back button: reload to start cleanly
+      window.addEventListener('pageshow', (e) => { if (e.persisted) location.reload(); });
+
+      // ---------- scan hint ----------
+      target.addEventListener('targetFound', () => {
+        targetVisible = true;
+        scanLabel.style.display = 'none';
+        if (follower) { snap = true; follower.setAttribute('visible', true); }
+      });
+      target.addEventListener('targetLost', () => {
+        targetVisible = false;
+        if (arStarted) scanLabel.style.display = 'block';
+        if (follower) follower.setAttribute('visible', false);
+      });
+
+      // ---------- smoothing: the model follows the card's pose gently ----------
+      // One Euro filter (adaptive): strong smoothing while the card is still (no
+      // shake), light smoothing while it moves (no lag). Works on the direction
+      // from the camera (what you see sideways) and on log-distance (depth), so
+      // the settings behave the same at any card distance.
+      if (!follower) return;
+      const SIDE_MIN_HZ = 0.25, SIDE_BETA = 80;
+      const DEPTH_MIN_HZ = 0.3, DEPTH_BETA = 5;
+      const alpha = (hz, dt) => 1 / (1 + 1 / (2 * Math.PI * hz * dt));
+      function OneEuro(minHz, beta, n) {
+        this.x = null; this.dx = new Array(n).fill(0);
+        this.step = (v, dt) => {
+          if (!this.x) { this.x = v.slice(); return 0; }
+          const ad = alpha(1, dt);
+          let speed = 0;
+          for (let i = 0; i < n; i++) {
+            this.dx[i] += ad * ((v[i] - this.x[i]) / dt - this.dx[i]);
+            speed += this.dx[i] * this.dx[i];
+          }
+          const a = alpha(minHz + beta * Math.sqrt(speed), dt);
+          for (let i = 0; i < n; i++) this.x[i] += a * (v[i] - this.x[i]);
+          return a;
+        };
+      }
+      let side, depth, last = 0;
+      const pos = new THREE.Vector3(), quat = new THREE.Quaternion(), scl = new THREE.Vector3();
+      (function follow(now) {
+        now = now || performance.now();
+        const dt = Math.min(0.1, Math.max(0.001, (now - last) / 1000));
+        last = now;
+        if (targetVisible) {
+          const t = target.object3D;
+          const f = follower.object3D;
+          t.updateMatrixWorld(true);
+          t.matrixWorld.decompose(pos, quat, scl);
+          const d = pos.length() || 1;
+          if (snap) {
+            side = new OneEuro(SIDE_MIN_HZ, SIDE_BETA, 3);
+            depth = new OneEuro(DEPTH_MIN_HZ, DEPTH_BETA, 1);
+            f.quaternion.copy(quat); f.scale.copy(scl);
+            snap = false;
+          }
+          const a = side.step([pos.x / d, pos.y / d, pos.z / d], dt);
+          depth.step([Math.log(d)], dt);
+          if (a) { f.quaternion.slerp(quat, a); f.scale.lerp(scl, a); }
+          f.position.set(side.x[0], side.x[1], side.x[2]).normalize().multiplyScalar(Math.exp(depth.x[0]));
+        }
+        requestAnimationFrame(follow);
+      })();
     });
   </script>
 </body>
